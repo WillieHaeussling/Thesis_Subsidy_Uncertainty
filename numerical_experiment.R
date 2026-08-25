@@ -415,6 +415,8 @@ for (k in 1:4) {
 mtext("Optimal Quantity (q) given Price Floor (theta)", outer = TRUE, cex = 1.2, font = 2)
 dev.off()
 
+# CONFIDENCE ====================================================================
+
 ## ==============================================================================
 # PHASE 4.1: MC of INVESTMENT PROCESS (Memory Optimized & Sequential) ===========
 ## ==============================================================================
@@ -428,11 +430,23 @@ simulate_paths <- function(res_obj, params, Npaths, Nt, dx, dt, W, X0) {
   S_current <- rep(X0, Npaths)
   
   S_avg     <- numeric(Nt + 1)
-  S_avg[1]  <- X0
+  S_lower   <- numeric(Nt + 1)
+  S_upper   <- numeric(Nt + 1)
+  S_avg[1]   <- X0
+  S_lower[1] <- X0
+  S_upper[1] <- X0
   
-  gamma_avg <- numeric(Nt)
+  gamma_avg   <- numeric(Nt)
+  gamma_lower <- numeric(Nt)
+  gamma_upper <- numeric(Nt)
+  
   q_avg     <- numeric(Nt)
-  theta_avg <- numeric(Nt)
+  q_lower   <- numeric(Nt)
+  q_upper   <- numeric(Nt)
+  
+  theta_avg   <- numeric(Nt)
+  theta_lower <- numeric(Nt)
+  theta_upper <- numeric(Nt)
   
   for (t_step in 1:Nt) {
     idx <- pmax(1, pmin(Nx - 2, floor((S_current - X_min) / dx) + 1))
@@ -441,19 +455,30 @@ simulate_paths <- function(res_obj, params, Npaths, Nt, dx, dt, W, X0) {
     q_step     <- res_obj$q[idx]
     theta_step <- res_obj$theta[idx]
     
-    gamma_avg[t_step] <- mean(gamma_step)
-    q_avg[t_step]     <- mean(q_step)
-    theta_avg[t_step] <- mean(theta_step)
+    gamma_avg[t_step]   <- mean(gamma_step)
+    gamma_lower[t_step] <- quantile(gamma_step, 0.05, names = FALSE)
+    gamma_upper[t_step] <- quantile(gamma_step, 0.95, names = FALSE)
+    
+    q_avg[t_step]       <- mean(q_step)
+    q_lower[t_step]     <- quantile(q_step, 0.05, names = FALSE)
+    q_upper[t_step]     <- quantile(q_step, 0.95, names = FALSE)
+    
+    theta_avg[t_step]   <- mean(theta_step)
+    theta_lower[t_step] <- quantile(theta_step, 0.05, names = FALSE)
+    theta_upper[t_step] <- quantile(theta_step, 0.95, names = FALSE)
     
     S_current <- S_current + (gamma_step - params$delta * S_current) * dt + W[, t_step]
-    S_avg[t_step+1] <- mean(S_current)
+    
+    S_avg[t_step+1]   <- mean(S_current)
+    S_lower[t_step+1] <- quantile(S_current, 0.05, names = FALSE)
+    S_upper[t_step+1] <- quantile(S_current, 0.95, names = FALSE)
   }
   
   list(
-    S_avg     = S_avg,
-    gamma_avg = gamma_avg,
-    q_avg     = q_avg,
-    theta_avg = theta_avg
+    S_avg = S_avg, S_lower = S_lower, S_upper = S_upper,
+    gamma_avg = gamma_avg, gamma_lower = gamma_lower, gamma_upper = gamma_upper,
+    q_avg = q_avg, q_lower = q_lower, q_upper = q_upper,
+    theta_avg = theta_avg, theta_lower = theta_lower, theta_upper = theta_upper
   )
 }
 
@@ -473,112 +498,6 @@ for (v in 1:length(X0_vals)) {
 }
 
 ## ==============================================================================
-# PHASE 4.2.0: Process plots ====================================================
-## ==============================================================================
-time_seq <- (0:Nt) * dt
-time_seq_Nt <- (1:Nt) * dt
-
-for (v in 1:length(X0_vals)) {
-  mc_low  <- mc_results[[v]]$low
-  mc_mid  <- mc_results[[v]]$mid
-  mc_high <- mc_results[[v]]$high
-  
-  ### Plot for Avg. Investment Paths ====
-  png(paste0("avg_investment_paths_", X0_tags[v], ".png"),  width = a4_width, height = a4_height, units = "in", res = resolution)
-      #width = 800, height = 600)
-  par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
-  for (k in 1:4) {
-    plot(time_seq, mc_low[[k]]$S_avg, type = "l", col = "darkgreen", lwd = 2,
-         main = paste("theta_bar =", th_vals[k]),
-         xlab = "Time (Years)", ylab = "Investment Value (X)",
-         ylim = range(c(mc_low[[k]]$S_avg, mc_mid[[k]]$S_avg, mc_high[[k]]$S_avg)))
-    
-    lines(time_seq, mc_mid[[k]]$S_avg, col = "black", lwd = 2)
-    lines(time_seq, mc_high[[k]]$S_avg, col = "orange", lwd = 2)
-    
-    if(k == 1) legend("topleft", legend = c(paste0("High Unc (", uncertainty_nu[1], ")"), 
-                                            paste0("Mid Unc (", uncertainty_nu[2], ")"),
-                                            paste0("Low Unc (", uncertainty_nu[3], ")")), 
-                      col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
-  }
-  mtext(paste0("Avg. of Investment Value (X) Paths over Time (X0 = ", X0_titles[v], ")"), outer = TRUE, cex = 1.2, font = 2)
-  dev.off()
-  
-  ### Plot for Avg. Price Floor (theta) ====
-  png(paste0("avg_subsidies_paths_", X0_tags[v], ".png"),  width = a4_width, height = a4_height, units = "in", res = resolution)
-      #width = 800, height = 600)
-  par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
-  for (k in 1:4) {
-    plot(time_seq_Nt, mc_low[[k]]$theta_avg, type = "l", col = "darkgreen", lwd = 2,
-         main = paste("theta_bar =", th_vals[k]),
-         xlab = "Time (Years)", ylab = "Price Floor (theta)",
-         ylim = range(c(mc_low[[k]]$theta_avg, mc_mid[[k]]$theta_avg, mc_high[[k]]$theta_avg, params$py, th_vals[k])))
-    
-    lines(time_seq_Nt, mc_mid[[k]]$theta_avg, col = "black", lwd = 2)
-    lines(time_seq_Nt, mc_high[[k]]$theta_avg, col = "orange", lwd = 2)
-    
-    abline(h = th_vals[k], lty = 2, col = "darkgrey")
-    abline(h = params$py, lty = 2, col = "darkgrey")
-    
-    if(k == 1) legend("bottomleft", legend = c(paste0("High Unc (", uncertainty_nu[1], ")"), 
-                                               paste0("Mid Unc (", uncertainty_nu[2], ")"),
-                                               paste0("Low Unc (", uncertainty_nu[3], ")")), 
-                      col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
-  }
-  mtext(paste0("Avg. of Price Floor (theta) Paths over Time (X0 = ", X0_titles[v], ")"), outer = TRUE, cex = 1.2, font = 2)
-  dev.off()
-  
-  ### Plot for Avg. Quantities (q) ====
-  png(paste0("avg_quantities_paths_", X0_tags[v], ".png"),  width = a4_width, height = a4_height, units = "in", res = resolution)
-      #width = 800, height = 600)
-  par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
-  for (k in 1:4) {
-    plot(time_seq_Nt, mc_low[[k]]$q_avg, type = "l", col = "darkgreen", lwd = 2,
-         main = paste("theta_bar =", th_vals[k]),
-         xlab = "Time (Years)", ylab = "Quantity (q)",
-         ylim = range(c(mc_low[[k]]$q_avg, mc_mid[[k]]$q_avg, mc_high[[k]]$q_avg, params$py, th_vals[k])))
-    
-    lines(time_seq_Nt, mc_mid[[k]]$q_avg, col = "black", lwd = 2)
-    lines(time_seq_Nt, mc_high[[k]]$q_avg, col = "orange", lwd = 2)
-    
-    abline(h = params$q_max, lty = 2, col = "darkgrey")
-    abline(h = 1.96, lty = 2, col = "darkgrey")
-    
-    if(k == 1) legend("topleft", legend = c(paste0("High Unc (", uncertainty_nu[1], ")"), 
-                                            paste0("Mid Unc (", uncertainty_nu[2], ")"),
-                                            paste0("Low Unc (", uncertainty_nu[3], ")")), 
-                      col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
-  }
-  mtext(paste0("Avg. of Quantity (q) Paths over Time (X0 = ", X0_titles[v], ")"), outer = TRUE, cex = 1.2, font = 2)
-  dev.off()
-  
-  ### Plot for Avg. Investment Rate (gamma) ====
-  png(paste0("avg_investment_rates_paths_", X0_tags[v], ".png"),  width = a4_width, height = a4_height, units = "in", res = resolution)
-      #width = 800, height = 600)
-  par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
-  for (k in 1:4) {
-    plot(time_seq_Nt, mc_low[[k]]$gamma_avg, type = "l", col = "darkgreen", lwd = 2,
-         main = paste("theta_bar =", th_vals[k]),
-         xlab = "Time (Years)", ylab = "Investment Rate (gamma)",
-         ylim = range(c(mc_low[[k]]$gamma_avg, mc_mid[[k]]$gamma_avg, 
-                        mc_high[[k]]$gamma_avg, params$py, th_vals[k])))
-    
-    lines(time_seq_Nt, mc_mid[[k]]$gamma_avg, col = "black", lwd = 2)
-    lines(time_seq_Nt, mc_high[[k]]$gamma_avg, col = "orange", lwd = 2)
-    
-    abline(h = 0, lty = 2, col = "darkgrey")
-    
-    if(k == 1) legend("bottomleft", legend = c(paste0("High Unc (", uncertainty_nu[1], ")"), 
-                                               paste0("Mid Unc (", uncertainty_nu[2], ")"),
-                                               paste0("Low Unc (", uncertainty_nu[3], ")")), 
-                      col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
-  }
-  mtext(paste0("Avg. of Investment Rate (gamma) Paths over Time (X0 = ", X0_titles[v], ")"), outer = TRUE, cex = 1.2, font = 2)
-  dev.off()
-}
-
-
-## ==============================================================================
 # PHASE 4.2.1: Process plots combined (Rows = X0, Columns = theta_bar) ==========
 ## ==============================================================================
 time_seq <- (0:Nt) * dt
@@ -588,11 +507,8 @@ time_seq_Nt <- (1:Nt) * dt
 n_rows <- length(X0_vals)
 n_cols <- length(th_vals)
 
-
-
 ### Panel Plot for Avg. Investment Paths ====
 png("avg_investment_paths_combined.png", width = a4_width, height = a4_height, units = "in", res = resolution)
-
 par(mfrow = c(n_rows, n_cols), oma = c(4, 2, 4, 1), mar = c(4, 6, 3, 1))
 
 col_ylim <- list()
@@ -600,11 +516,11 @@ for (k in 1:n_cols) {
   row_vals <- c()
   for(v in 1:n_rows) {
     row_vals <- c(row_vals, 
-                  mc_results[[v]]$low[[k]]$S_avg, 
-                  mc_results[[v]]$mid[[k]]$S_avg, 
-                  mc_results[[v]]$high[[k]]$S_avg)
+                  mc_results[[v]]$low[[k]]$S_lower, mc_results[[v]]$low[[k]]$S_upper,
+                  mc_results[[v]]$mid[[k]]$S_lower, mc_results[[v]]$mid[[k]]$S_upper,
+                  mc_results[[v]]$high[[k]]$S_lower, mc_results[[v]]$high[[k]]$S_upper)
   }
-  col_ylim[[k]] <- range(row_vals, na.rm = TRUE) # Use double brackets
+  col_ylim[[k]] <- range(row_vals, na.rm = TRUE)
 }
 
 for (v in 1:n_rows) {
@@ -613,30 +529,29 @@ for (v in 1:n_rows) {
     mc_mid  <- mc_results[[v]]$mid
     mc_high <- mc_results[[v]]$high
     
-    # Initialize empty plot for background
     plot(time_seq, mc_low[[k]]$S_avg, type = "n", 
          xlab = "Time (Years)", ylab = "Investment Value (X)",
          ylim = col_ylim[[k]])
     
-    # Add grid
     grid(col = "lightgray", lty = "dotted", lwd = 1)
     
-    # Draw data lines on top of grid
-    lines(time_seq, mc_low[[k]]$S_avg, col = "darkgreen", lwd = 2)
-    lines(time_seq, mc_mid[[k]]$S_avg, col = "black", lwd = 2)
-    lines(time_seq, mc_high[[k]]$S_avg, col = "orange", lwd = 2)
+    polygon(c(time_seq, rev(time_seq)), c(mc_high[[k]]$S_lower, rev(mc_high[[k]]$S_upper)), col = adjustcolor("orange", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq, rev(time_seq)), c(mc_mid[[k]]$S_lower, rev(mc_mid[[k]]$S_upper)), col = adjustcolor("black", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq, rev(time_seq)), c(mc_low[[k]]$S_lower, rev(mc_low[[k]]$S_upper)), col = adjustcolor("darkgreen", alpha.f = 0.2), border = NA)
     
-    # Headers
-    if (v == 1) { # Top row gets the column headers (theta_bar)
+    lines(time_seq, mc_high[[k]]$S_avg, col = "orange", lwd = 2)
+    lines(time_seq, mc_mid[[k]]$S_avg, col = "black", lwd = 2)
+    lines(time_seq, mc_low[[k]]$S_avg, col = "darkgreen", lwd = 2)
+    
+    if (v == 1) { 
       mtext(paste0("theta_bar = ", th_vals[k]), side = 3, line = 1, cex = 1.1, font = 2)
     }
-    if (k == 1) { # First column gets the row headers (X0)
+    if (k == 1) { 
       mtext(paste0("X0 = ", X0_titles[v]), side = 2, line = 4.5, cex = 1.1, font = 2, las = 0)
     }
   }
 }
 mtext("Avg. of Investment Value (X) Paths over Time", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
-
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
 plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
 legend("bottom", legend = c(paste0("High Unc (", uncertainty_nu[1], ")"), 
@@ -655,11 +570,11 @@ for (k in 1:n_cols) {
   row_vals <- c()
   for(v in 1:n_rows) {
     row_vals <- c(row_vals, 
-                  mc_results[[v]]$low[[k]]$theta_avg, 
-                  mc_results[[v]]$mid[[k]]$theta_avg, 
-                  mc_results[[v]]$high[[k]]$theta_avg)
+                  mc_results[[v]]$low[[k]]$theta_lower, mc_results[[v]]$low[[k]]$theta_upper,
+                  mc_results[[v]]$mid[[k]]$theta_lower, mc_results[[v]]$mid[[k]]$theta_upper,
+                  mc_results[[v]]$high[[k]]$theta_lower, mc_results[[v]]$high[[k]]$theta_upper)
   }
-  col_ylim[[k]] <- range(row_vals, na.rm = TRUE) # Use double brackets
+  col_ylim[[k]] <- range(row_vals, na.rm = TRUE)
 }
 
 for (v in 1:n_rows) {
@@ -668,20 +583,21 @@ for (v in 1:n_rows) {
     mc_mid  <- mc_results[[v]]$mid
     mc_high <- mc_results[[v]]$high
     
-    # Initialize empty plot
     plot(time_seq_Nt, mc_low[[k]]$theta_avg, type = "n", 
          xlab = "Time (Years)", ylab = "Price Floor (theta)",
          ylim = col_ylim[[k]])
     
-    # Add grid and background reference lines
     grid(col = "lightgray", lty = "dotted", lwd = 1)
     abline(h = th_vals[k], lty = 2, col = "darkgrey")
     abline(h = params$py, lty = 2, col = "darkgrey")
     
-    # Draw data lines on top
-    lines(time_seq_Nt, mc_low[[k]]$theta_avg, col = "darkgreen", lwd = 2)
-    lines(time_seq_Nt, mc_mid[[k]]$theta_avg, col = "black", lwd = 2)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_high[[k]]$theta_lower, rev(mc_high[[k]]$theta_upper)), col = adjustcolor("orange", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_mid[[k]]$theta_lower, rev(mc_mid[[k]]$theta_upper)), col = adjustcolor("black", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_low[[k]]$theta_lower, rev(mc_low[[k]]$theta_upper)), col = adjustcolor("darkgreen", alpha.f = 0.2), border = NA)
+    
     lines(time_seq_Nt, mc_high[[k]]$theta_avg, col = "orange", lwd = 2)
+    lines(time_seq_Nt, mc_mid[[k]]$theta_avg, col = "black", lwd = 2)
+    lines(time_seq_Nt, mc_low[[k]]$theta_avg, col = "darkgreen", lwd = 2)
     
     if (v == 1) {
       mtext(paste0("theta_bar = ", th_vals[k]), side = 3, line = 1, cex = 1.1, font = 2)
@@ -692,7 +608,6 @@ for (v in 1:n_rows) {
   }
 }
 mtext("Avg. of Price Floor (theta) Paths over Time", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
-
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
 plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
 legend("bottom", legend = c(paste0("High Unc (", uncertainty_nu[1], ")"), 
@@ -711,11 +626,11 @@ for (k in 1:n_cols) {
   row_vals <- c()
   for(v in 1:n_rows) {
     row_vals <- c(row_vals, 
-                  mc_results[[v]]$low[[k]]$q_avg, 
-                  mc_results[[v]]$mid[[k]]$q_avg, 
-                  mc_results[[v]]$high[[k]]$q_avg)
+                  mc_results[[v]]$low[[k]]$q_lower, mc_results[[v]]$low[[k]]$q_upper,
+                  mc_results[[v]]$mid[[k]]$q_lower, mc_results[[v]]$mid[[k]]$q_upper,
+                  mc_results[[v]]$high[[k]]$q_lower, mc_results[[v]]$high[[k]]$q_upper)
   }
-  col_ylim[[k]] <- range(row_vals, na.rm = TRUE) # Use double brackets
+  col_ylim[[k]] <- range(row_vals, na.rm = TRUE)
 }
 
 for (v in 1:n_rows) {
@@ -724,20 +639,21 @@ for (v in 1:n_rows) {
     mc_mid  <- mc_results[[v]]$mid
     mc_high <- mc_results[[v]]$high
     
-    # Initialize empty plot
     plot(time_seq_Nt, mc_low[[k]]$q_avg, type = "n", 
          xlab = "Time (Years)", ylab = "Quantity (q)",
          ylim = col_ylim[[k]])
     
-    # Add grid and background reference lines
     grid(col = "lightgray", lty = "dotted", lwd = 1)
     abline(h = params$q_max, lty = 2, col = "darkgrey")
     abline(h = 1.96, lty = 2, col = "darkgrey")
     
-    # Draw data lines on top
-    lines(time_seq_Nt, mc_low[[k]]$q_avg, col = "darkgreen", lwd = 2)
-    lines(time_seq_Nt, mc_mid[[k]]$q_avg, col = "black", lwd = 2)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_high[[k]]$q_lower, rev(mc_high[[k]]$q_upper)), col = adjustcolor("orange", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_mid[[k]]$q_lower, rev(mc_mid[[k]]$q_upper)), col = adjustcolor("black", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_low[[k]]$q_lower, rev(mc_low[[k]]$q_upper)), col = adjustcolor("darkgreen", alpha.f = 0.2), border = NA)
+    
     lines(time_seq_Nt, mc_high[[k]]$q_avg, col = "orange", lwd = 2)
+    lines(time_seq_Nt, mc_mid[[k]]$q_avg, col = "black", lwd = 2)
+    lines(time_seq_Nt, mc_low[[k]]$q_avg, col = "darkgreen", lwd = 2)
     
     if (v == 1) {
       mtext(paste0("theta_bar = ", th_vals[k]), side = 3, line = 1, cex = 1.1, font = 2)
@@ -748,7 +664,6 @@ for (v in 1:n_rows) {
   }
 }
 mtext("Avg. of Quantity (q) Paths over Time", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
-
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
 plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
 legend("bottom", legend = c(paste0("High Unc (", uncertainty_nu[1], ")"), 
@@ -767,11 +682,11 @@ for (k in 1:n_cols) {
   row_vals <- c()
   for(v in 1:n_rows) {
     row_vals <- c(row_vals, 
-                  mc_results[[v]]$low[[k]]$gamma_avg, 
-                  mc_results[[v]]$mid[[k]]$gamma_avg, 
-                  mc_results[[v]]$high[[k]]$gamma_avg)
+                  mc_results[[v]]$low[[k]]$gamma_lower, mc_results[[v]]$low[[k]]$gamma_upper,
+                  mc_results[[v]]$mid[[k]]$gamma_lower, mc_results[[v]]$mid[[k]]$gamma_upper,
+                  mc_results[[v]]$high[[k]]$gamma_lower, mc_results[[v]]$high[[k]]$gamma_upper)
   }
-  col_ylim[[k]] <- range(row_vals, na.rm = TRUE) # Use double brackets
+  col_ylim[[k]] <- range(row_vals, na.rm = TRUE)
 }
 
 for (v in 1:n_rows) {
@@ -780,19 +695,20 @@ for (v in 1:n_rows) {
     mc_mid  <- mc_results[[v]]$mid
     mc_high <- mc_results[[v]]$high
     
-    # Initialize empty plot
     plot(time_seq_Nt, mc_low[[k]]$gamma_avg, type = "n", 
          xlab = "Time (Years)", ylab = "Investment Rate (gamma)",
          ylim = col_ylim[[k]])
     
-    # Add grid and background reference lines
     grid(col = "lightgray", lty = "dotted", lwd = 1)
     abline(h = 0, lty = 2, col = "darkgrey")
     
-    # Draw data lines on top
-    lines(time_seq_Nt, mc_low[[k]]$gamma_avg, col = "darkgreen", lwd = 2)
-    lines(time_seq_Nt, mc_mid[[k]]$gamma_avg, col = "black", lwd = 2)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_high[[k]]$gamma_lower, rev(mc_high[[k]]$gamma_upper)), col = adjustcolor("orange", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_mid[[k]]$gamma_lower, rev(mc_mid[[k]]$gamma_upper)), col = adjustcolor("black", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_low[[k]]$gamma_lower, rev(mc_low[[k]]$gamma_upper)), col = adjustcolor("darkgreen", alpha.f = 0.2), border = NA)
+    
     lines(time_seq_Nt, mc_high[[k]]$gamma_avg, col = "orange", lwd = 2)
+    lines(time_seq_Nt, mc_mid[[k]]$gamma_avg, col = "black", lwd = 2)
+    lines(time_seq_Nt, mc_low[[k]]$gamma_avg, col = "darkgreen", lwd = 2)
     
     if (v == 1) {
       mtext(paste0("theta_bar = ", th_vals[k]), side = 3, line = 1, cex = 1.1, font = 2)
@@ -803,7 +719,6 @@ for (v in 1:n_rows) {
   }
 }
 mtext("Avg. of Investment Rate (gamma) Paths over Time", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
-
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
 plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
 legend("bottom", legend = c(paste0("High Unc (", uncertainty_nu[1], ")"), 
@@ -811,7 +726,6 @@ legend("bottom", legend = c(paste0("High Unc (", uncertainty_nu[1], ")"),
                             paste0("Low Unc (", uncertainty_nu[3], ")")), 
        col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n", horiz = TRUE, cex = 1.2)
 dev.off()
-
 
 
 ## ==============================================================================
@@ -826,12 +740,12 @@ par(mfrow = c(n_rows_nu, n_cols), oma = c(4, 6, 4, 1), mar = c(4, 4, 3, 1))
 
 X0_state <- 1 # We plot for the first initial state X0
 
-# Pre-calculate global ylim
+# Pre-calculate global ylim incorporating the upper and lower confidence intervals
 col_ylim <- list()
 for (k in 1:n_cols) {
-  col_vals <- c(mc_results[[X0_state]]$low[[k]]$q_avg, 
-                mc_results[[X0_state]]$mid[[k]]$q_avg, 
-                mc_results[[X0_state]]$high[[k]]$q_avg)
+  col_vals <- c(mc_results[[X0_state]]$low[[k]]$q_lower, mc_results[[X0_state]]$low[[k]]$q_upper,
+                mc_results[[X0_state]]$mid[[k]]$q_lower, mc_results[[X0_state]]$mid[[k]]$q_upper,
+                mc_results[[X0_state]]$high[[k]]$q_lower, mc_results[[X0_state]]$high[[k]]$q_upper)
   
   lims <- range(col_vals, na.rm = TRUE)
   col_ylim[[k]] <- c(0, max(lims[2], params$q_max)) 
@@ -845,6 +759,8 @@ for (r in 1:n_rows_nu) {
     if (r == 3) curr_data <- mc_results[[X0_state]]$low[[k]]
     
     q_val <- curr_data$q_avg
+    q_lower <- curr_data$q_lower
+    q_upper <- curr_data$q_upper
     
     # CALCULATE Pg_x
     x_val <- curr_data$S_avg[-1] 
@@ -853,7 +769,7 @@ for (r in 1:n_rows_nu) {
     # Prevent overlap bugs
     q_val <- pmax(q_val, Pg_x)
     
-    # 2. Draw Plot
+    # Draw Plot
     plot(time_seq_Nt, q_val, type = "n", 
          xlab = "Time (Years)", ylab = "Quantity (q)",
          ylim = col_ylim[[k]])
@@ -862,12 +778,12 @@ for (r in 1:n_rows_nu) {
     abline(h = params$q_max, lty = 2, col = "darkgrey")
     abline(h = 1.96, lty = 2, col = "darkgrey")
     
-    # 3. Draw Green Area
+    # Draw Green Area
     polygon(x = c(time_seq_Nt, rev(time_seq_Nt)), 
             y = c(rep(0, length(time_seq_Nt)), rev(Pg_x)), 
             col = "lightgreen", border = NA)
     
-    # 4. Draw Brown Area
+    # Draw Brown Area
     polygon(x = c(time_seq_Nt, rev(time_seq_Nt)), 
             y = c(Pg_x, rev(q_val)), 
             col = "tan", border = NA)
@@ -876,7 +792,10 @@ for (r in 1:n_rows_nu) {
     lines(time_seq_Nt, Pg_x, col = "darkgreen", lwd = 2)
     lines(time_seq_Nt, q_val, col = "saddlebrown", lwd = 2)
     
-    # 5. Margins and Titles
+    # Add dashed line for brown overproduction
+    lines(time_seq_Nt, Pg_x + 1.96, col = "saddlebrown", lty = 2, lwd = 1)
+    
+    # Margins and Titles
     if (r == 1) {
       mtext(paste0("theta_bar = ", th_vals[k]), side = 3, line = 1, cex = 1.1, font = 2)
     }
@@ -898,52 +817,19 @@ mtext(paste0("Avg. of Quantity (q) Paths over Time with Initial State X0 = ", X0
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
 plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
 legend("bottom", 
-       legend = c(expression("P"["g"]*"(x) (Green Area)"), expression("q - P"["g"]*"(x) (Brown Area)")), 
-       fill = c("lightgreen", "tan"), 
-       border = c("darkgreen", "saddlebrown"), 
+       legend = c(expression("P"["g"]*"(x) (Green Area)"), 
+                  expression("q - P"["g"]*"(x) (Brown Area)"), 
+                  expression("P"["g"]*"(x) + 1.96 (Brown Production Lower Bound)")), 
+       fill = c("lightgreen", "tan", NA), 
+       border = c("darkgreen", "saddlebrown", NA),
+       col = c(NA, NA, "saddlebrown"), 
+       lty = c(0, 0, 2), # 0 = no line for boxes, 2 = dashed line for the 3rd item
+       lwd = c(0, 0, 2), 
        bty = "n", horiz = TRUE, cex = 1.2)
 dev.off()
 
-
 ## ==============================================================================
-# PHASE 5: Value plots ==========================================================
-## ==============================================================================
-
-color_vec <- c("darkblue", "blue", "lightblue", "lightgrey", "grey")
-step_values <- c(0.25, 0.5, 0.75, 1) * Nt
-
-plot_value_grid <- function(res_list, nu_val) {
-  png(paste0("game_value_nu_", nu_val, ".png"),  width = a4_width, height = a4_height, units = "in", res = resolution)
-      #width = 800, height = 600)
-  par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
-  for(k in 1:4) {
-    U_val <- matrix(unlist(res_list[[k]]$value), nrow = Nt + 1, ncol = Nx, byrow = TRUE)
-    
-    plot(X, U_val[1,], type = "l", col = color_vec[1], lwd = 2,
-         xlab = "Investment X", ylab = "Game Value",
-         main = paste("theta_bar =", th_vals[k]),
-         ylim = range(U_val))
-    
-    for (i in 1:4){
-      lines(X, U_val[step_values[i], ], col = color_vec[i+1], lwd = 2)
-    }
-    
-    if (k == 1) {
-      legend("bottomright", legend = c("t=0", paste("t=", step_values)), 
-             col = color_vec, lwd = 2, bty = "n", cex=0.8)
-    }
-  }
-  mtext(paste0("Game value over X (nu = ", nu_val, ")"), outer = TRUE, cex = 1.2, font = 2)
-  dev.off()
-}
-
-plot_value_grid(res_high_unc, uncertainty_nu[1])
-plot_value_grid(res_mid_unc, uncertainty_nu[2])
-plot_value_grid(res_low_unc, uncertainty_nu[3])
-
-
-## ==============================================================================
-# PHASE 5.1: Panel Value plots ==================================================
+# PHASE 5: Panel Value plots ==================================================
 ## ==============================================================================
 
 color_vec <- c("darkblue", "blue", "lightblue", "lightgrey", "grey")
@@ -1013,37 +899,202 @@ legend("bottom",
 
 dev.off()
 
+
+
+
 ## ==============================================================================
 # PHASE 6: Benchmarking of Code =================================================
 ## ==============================================================================
 
-plot_derivative_grid <- function(res_list, nu_val, line_color) {
-  png(paste0("marginal_value_benchmark_nu_", nu_val, ".png"),  width = a4_width, height = a4_height, units = "in", res = resolution)
-      #width = 800, height = 600)
-  par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
-  for(k in 1:4) {
-    Ux <- diff(res_list[[k]]$value[[1]]) / dx
-    
-    plot(X[-Nx], Ux, type = "l", col = line_color, lwd = 2,
-         xlab = "Investment Space (X)", ylab = "U_x",
-         main = paste("theta_bar =", th_vals[k]))
-    abline(v = params$x_bar, lty = 3, col = "red")
+# Group lists and labels to easily loop through them
+res_lists <- list(res_high_unc, res_mid_unc, res_low_unc)
+nu_labels <- c(paste0("High Unc (", uncertainty_nu[1], ")"),
+               paste0("Mid Unc (", uncertainty_nu[2], ")"),
+               paste0("Low Unc (", uncertainty_nu[3], ")"))
+
+# Line colors for the different uncertainty levels (matching your original function calls)
+row_colors <- c("orange", "black", "darkgreen")
+
+## ==============================================================================
+# PHASE 6.1: First Derivative ===================================================
+## ==============================================================================
+
+png("marginal_value_benchmark_combined.png", width = a4_width, height = a4_height, units = "in", res = resolution)
+par(mfrow = c(3, 4), oma = c(5, 6, 4, 1), mar = c(4, 4, 3, 1))
+
+# Pre-calculate global ylim so the Y-axis is scaled equally across all 12 panels
+lims <- c()
+for (r in 1:3) {
+  for (k in 1:4) {
+    Ux <- diff(res_lists[[r]][[k]]$value[[1]]) / dx
+    lims <- c(lims, range(Ux, na.rm = TRUE))
   }
-  mtext(paste0("First Derivative (Marginal Value) Benchmark, nu = ", nu_val), outer = TRUE, cex = 1.2, font = 2)
-  dev.off()
+}
+global_ylim <- range(lims)
+
+# Generate the 3x4 plots
+for (r in 1:3) {
+  for (k in 1:4) {
+    
+    # Extract and calculate the derivative for the current matrix
+    Ux <- diff(res_lists[[r]][[k]]$value[[1]]) / dx
+    
+    # Base Plot
+    plot(X[-Nx], Ux, type = "l", col = row_colors[r], lwd = 2,
+         xlab = "Investment Space (X)", ylab = "U_x",
+         ylim = global_ylim) 
+    
+    grid(col = "lightgray", lty = "dotted", lwd = 1)
+    
+    # Add benchmark vertical line
+    abline(v = params$x_bar, lty = 3, col = "red")
+    
+    # Add Column Titles (theta_bar) on the top row
+    if (r == 1) {
+      mtext(paste("theta_bar =", th_vals[k]), side = 3, line = 1, cex = 1.1, font = 2)
+    }
+    
+    # Add Row Titles (nu) on the first column
+    if (k == 1) {
+      mtext(nu_labels[r], side = 2, line = 4.5, cex = 1.1, font = 2, las = 0)
+    }
+  }
 }
 
-plot_derivative_grid(res_high_unc, uncertainty_nu[1], "purple")
-plot_derivative_grid(res_mid_unc, uncertainty_nu[2], "black")
-plot_derivative_grid(res_low_unc, uncertainty_nu[3], "darkblue")
+# Main Outer Title
+mtext("First Derivative (Marginal Value) Benchmark by Uncertainty and Theta Bar", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
+
+# Outer Global Legend at the bottom
+par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
+plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
+legend("bottom", 
+       legend = c("High Unc", "Mid Unc", "Low Unc", "x_bar Threshold"), 
+       col = c(row_colors[1], row_colors[2], row_colors[3], "red"), 
+       lwd = c(2, 2, 2, 1), lty = c(1, 1, 1, 3), 
+       bty = "n", horiz = TRUE, cex = 1.2)
+
+dev.off()
+
+## ==============================================================================
+# PHASE 6.2: Howard Policy Iteration Diagnostics ================================
+## ==============================================================================
+
+# Panel Plot for Howard Error (h_error)
+png("howard_error_combined.png", width = a4_width, height = a4_height, units = "in", res = resolution)
+par(mfrow = c(3, 4), oma = c(5, 6, 4, 1), mar = c(4, 4, 3, 1))
+
+# Pre-calculate global ylim (safeguarded against flat lines by forcing a small max)
+lims_err <- c()
+for (r in 1:3) {
+  for (k in 1:4) {
+    lims_err <- c(lims_err, range(res_lists[[r]][[k]]$h_error, na.rm = TRUE))
+  }
+}
+global_ylim_err <- c(min(0, min(lims_err, na.rm = TRUE)), 
+                     max(1e-8, max(lims_err, na.rm = TRUE)))
+
+# Generate the 3x4 plots
+for (r in 1:3) {
+  for (k in 1:4) {
+    
+    err_val <- res_lists[[r]][[k]]$h_error
+    steps <- 1:length(err_val)
+    
+    # Base Plot
+    plot(steps, err_val, type = "l", col = row_colors[r], lwd = 1,
+         xlab = "Time Step Count in dt", ylab = "Howard Error",
+         ylim = global_ylim_err) 
+    
+    grid(col = "lightgray", lty = "dotted", lwd = 1)
+    
+    # Add Column Titles (theta_bar) on the top row
+    if (r == 1) {
+      mtext(paste("theta_bar =", th_vals[k]), side = 3, line = 1, cex = 1.1, font = 2)
+    }
+    
+    # Add Row Titles (nu) on the first column
+    if (k == 1) {
+      mtext(nu_labels[r], side = 2, line = 4.5, cex = 1.1, font = 2, las = 0)
+    }
+  }
+}
+
+# Main Outer Title
+mtext("Howard Policy Iteration Error by Uncertainty and Theta Bar", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
+
+# Outer Global Legend at the bottom
+par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
+plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
+legend("bottom", 
+       legend = c("High Unc", "Mid Unc", "Low Unc"), 
+       col = row_colors, 
+       lwd = 2, bty = "n", horiz = TRUE, cex = 1.2)
+
+dev.off()
+
+
+# Panel Plot for Howard Iterations (h_iter)
+png("howard_iter_combined.png", width = a4_width, height = a4_height, units = "in", res = resolution)
+par(mfrow = c(3, 4), oma = c(5, 6, 4, 1), mar = c(4, 4, 3, 1))
+
+# Pre-calculate global ylim (safeguarded so perfectly flat iterations won't crash ylim)
+lims_iter <- c()
+for (r in 1:3) {
+  for (k in 1:4) {
+    lims_iter <- c(lims_iter, range(res_lists[[r]][[k]]$h_iter, na.rm = TRUE))
+  }
+}
+global_ylim_iter <- c(min(0, min(lims_iter, na.rm = TRUE)), 
+                      max(1, max(lims_iter, na.rm = TRUE)))
+
+# Generate the 3x4 plots
+for (r in 1:3) {
+  for (k in 1:4) {
+    
+    iter_val <- res_lists[[r]][[k]]$h_iter
+    steps <- 1:length(iter_val)
+    
+    # Base Plot
+    plot(steps, iter_val, type = "p", col = row_colors[r], lwd = 0.5,
+         xlab = "Time Step Count in dt", ylab = "Iterations",
+         ylim = global_ylim_iter) 
+    
+    grid(col = "lightgray", lty = "dotted", lwd = 1)
+    
+    # Add Column Titles (theta_bar) on the top row
+    if (r == 1) {
+      mtext(paste("theta_bar =", th_vals[k]), side = 3, line = 1, cex = 1.1, font = 2)
+    }
+    
+    # Add Row Titles (nu) on the first column
+    if (k == 1) {
+      mtext(nu_labels[r], side = 2, line = 4.5, cex = 1.1, font = 2, las = 0)
+    }
+  }
+}
+
+# Main Outer Title
+mtext("Howard Policy Iterations by Uncertainty and Theta Bar", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
+
+# Outer Global Legend at the bottom
+par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
+plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
+legend("bottom", 
+       legend = c("High Unc", "Mid Unc", "Low Unc"), 
+       col = row_colors, 
+       lwd = 2, bty = "n", horiz = TRUE, cex = 1.2)
+
+dev.off()
+
 
 ## ==============================================================================
 # PHASE 7: SENSITIVITY ANALYSIS (DELTA & SIGMA) (Sequential) ====================
 ## ==============================================================================
 
 base_nu <- uncertainty_nu[2]
-delta_vals <- c(0.01, params$delta, 0.05) 
-sigma_vals <- c(0.01, params$sigma, 1)   
+delta_vals <- c(0.002, params$delta, 0.2) 
+sigma_vals <- c(0.002, params$sigma, 2)   
+kappa_vals <- c(0.05, params$kappa, 5)   
 
 cat("Calculating Delta Sensitivity (Depreciation) sequentially...\n")
 res_delta_low <- lapply(th_vals, function(th) {
@@ -1065,6 +1116,16 @@ res_sigma_high <- lapply(th_vals, function(th) {
   simulate_fixed_p(th, base_nu, p)
 })
 
+cat("Calculating kappa Sensitivity (Transaction Costs) sequentially...\n")
+res_kappa_low <- lapply(th_vals, function(th) {
+  p <- params; p$kappa <- sigma_vals[1]
+  simulate_fixed_p(th, base_nu, p)
+})
+res_kappa_high <- lapply(th_vals, function(th) {
+  p <- params; p$kappa <- sigma_vals[3]
+  simulate_fixed_p(th, base_nu, p)
+})
+
 cat("Running MC Simulations for Sensitivity sequentially...\n")
 W_sigma_low  <- sigma_vals[1] * sqrt(dt) * Z_std
 W_sigma_high <- sigma_vals[3] * sqrt(dt) * Z_std
@@ -1077,63 +1138,12 @@ for(v in 1:length(X0_vals)) {
     delta_low  = lapply(1:4, function(k) { p <- params; p$delta <- delta_vals[1]; simulate_paths(res_delta_low[[k]], p, Npaths, Nt, dx, dt, W, X0_current) }),
     delta_high = lapply(1:4, function(k) { p <- params; p$delta <- delta_vals[3]; simulate_paths(res_delta_high[[k]], p, Npaths, Nt, dx, dt, W, X0_current) }),
     sigma_low  = lapply(1:4, function(k) { p <- params; p$sigma <- sigma_vals[1]; simulate_paths(res_sigma_low[[k]], p, Npaths, Nt, dx, dt, W_sigma_low, X0_current) }),
-    sigma_high = lapply(1:4, function(k) { p <- params; p$sigma <- sigma_vals[3]; simulate_paths(res_sigma_high[[k]], p, Npaths, Nt, dx, dt, W_sigma_high, X0_current) })
+    sigma_high = lapply(1:4, function(k) { p <- params; p$sigma <- sigma_vals[3]; simulate_paths(res_sigma_high[[k]], p, Npaths, Nt, dx, dt, W_sigma_high, X0_current) }),
+    kappa_low  = lapply(1:4, function(k) { p <- params; p$kappa <- kappa_vals[1]; simulate_paths(res_kappa_low[[k]], p, Npaths, Nt, dx, dt, W, X0_current) }),
+    kappa_high = lapply(1:4, function(k) { p <- params; p$kappa <- kappa_vals[3]; simulate_paths(res_kappa_high[[k]], p, Npaths, Nt, dx, dt, W, X0_current) })
   )
 }
 
-### PLOTS: DELTA & SIGMA SENSITIVITY ====
-for (v in 1:length(X0_vals)) {
-  mc_delta_low  <- mc_sens_results[[v]]$delta_low
-  mc_delta_high <- mc_sens_results[[v]]$delta_high
-  mc_sigma_low  <- mc_sens_results[[v]]$sigma_low
-  mc_sigma_high <- mc_sens_results[[v]]$sigma_high
-  
-  mc_mid <- mc_results[[v]]$mid
-  
-  # DELTA SENSITIVITY PLOT
-  png(paste0("sens_delta_avg_investment_", X0_tags[v], ".png"),  width = a4_width, height = a4_height, units = "in", res = resolution)
-      #width = 800, height = 600)
-  par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
-  for (k in 1:4) {
-    plot(time_seq, mc_delta_high[[k]]$S_avg, type = "l", col = "red", lwd = 2,
-         main = paste("theta_bar =", th_vals[k]),
-         xlab = "Time (Years)", ylab = "Investment Value (X)",
-         ylim = range(c(mc_delta_low[[k]]$S_avg, mc_mid[[k]]$S_avg, mc_delta_high[[k]]$S_avg)))
-    
-    lines(time_seq, mc_mid[[k]]$S_avg, col = "black", lwd = 2) 
-    lines(time_seq, mc_delta_low[[k]]$S_avg, col = "blue", lwd = 2)
-    
-    if(k == 1) legend("bottomright", legend = c(paste0("High Delta (", delta_vals[3], ")"), 
-                                                paste0("Base Delta (", delta_vals[2], ")"),
-                                                paste0("Low Delta (", delta_vals[1], ")")), 
-                      col = c("red", "black", "blue"), lwd = 2, bty = "n")
-  }
-  mtext(paste0("Sensitivity to Depreciation (Delta): Avg. Investment (X0 = ", X0_titles[v], ")"), outer = TRUE, cex = 1.2, font = 2)
-  dev.off()
-  
-  # SIGMA SENSITIVITY PLOT
-  png(paste0("sens_sigma_avg_investment_", X0_tags[v], ".png"),  width = a4_width, height = a4_height, units = "in", res = resolution)
-      #width = 800, height = 600)
-  par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
-  for (k in 1:4) {
-    plot(time_seq, mc_sigma_high[[k]]$S_avg, type = "l", col = "purple", lwd = 2,
-         main = paste("theta_bar =", th_vals[k]),
-         xlab = "Time (Years)", ylab = "Investment Value (X)",
-         ylim = range(c(mc_sigma_low[[k]]$S_avg, mc_mid[[k]]$S_avg, mc_sigma_high[[k]]$S_avg)))
-    
-    lines(time_seq, mc_mid[[k]]$S_avg, col = "black", lwd = 2) 
-    lines(time_seq, mc_sigma_low[[k]]$S_avg, col = "cyan", lwd = 2)
-    
-    if(k == 1) legend("bottomright", legend = c(paste0("High Sigma (", sigma_vals[3], ")"), 
-                                                paste0("Base Sigma (", sigma_vals[2], ")"),
-                                                paste0("Low Sigma (", sigma_vals[1], ")")), 
-                      col = c("purple", "black", "cyan"), lwd = 2, bty = "n")
-  }
-  mtext(paste0("Sensitivity to Volatility (Sigma): Avg. Investment (X0 = ", X0_titles[v], ")"), outer = TRUE, cex = 1.2, font = 2)
-  dev.off()
-}
-
-par(mfrow = c(1, 1))
 
 ## ==============================================================================
 # PHASE 7.1: SENSITIVITY ANALYSIS (DELTA & SIGMA) Combined Plot ================
@@ -1145,23 +1155,19 @@ time_seq <- (0:Nt) * dt
 n_rows <- length(X0_vals)
 n_cols <- length(th_vals)
 
-a4_width  <- 11.69
-a4_height <- 8.27
-resolution <- 300 
-
 #### DELTA SENSITIVITY PLOT ====
 png("sens_delta_avg_investment_combined_nu_1.png", width = a4_width, height = a4_height, units = "in", res = resolution)
 par(mfrow = c(n_rows, n_cols), oma = c(4, 2, 4, 1), mar = c(4, 6, 3, 1))
 
-# Calculate limits by row (for each X0 across all theta_bar columns)
+# Calculate limits by row (for each X0 across all theta_bar columns) incorporating CIs
 row_ylim <- list()
 for (v in 1:n_rows) {
   vals <- c()
   for (k in 1:n_cols) {
     vals <- c(vals, 
-              mc_sens_results[[v]]$delta_low[[k]]$S_avg, 
-              mc_results[[v]]$mid[[k]]$S_avg, 
-              mc_sens_results[[v]]$delta_high[[k]]$S_avg)
+              mc_sens_results[[v]]$delta_low[[k]]$S_lower, mc_sens_results[[v]]$delta_low[[k]]$S_upper,
+              mc_results[[v]]$mid[[k]]$S_lower, mc_results[[v]]$mid[[k]]$S_upper,
+              mc_sens_results[[v]]$delta_high[[k]]$S_lower, mc_sens_results[[v]]$delta_high[[k]]$S_upper)
   }
   row_ylim[[v]] <- range(vals, na.rm = TRUE)
 }
@@ -1180,10 +1186,15 @@ for (v in 1:n_rows) {
     # Add grid
     grid(col = "lightgray", lty = "dotted", lwd = 1)
     
+    # Draw Confidence Intervals (Shading)
+    polygon(c(time_seq, rev(time_seq)), c(mc_delta_high[[k]]$S_lower, rev(mc_delta_high[[k]]$S_upper)), col = adjustcolor("red", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq, rev(time_seq)), c(mc_mid[[k]]$S_lower, rev(mc_mid[[k]]$S_upper)), col = adjustcolor("black", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq, rev(time_seq)), c(mc_delta_low[[k]]$S_lower, rev(mc_delta_low[[k]]$S_upper)), col = adjustcolor("blue", alpha.f = 0.2), border = NA)
+    
     # Draw lines
-    lines(time_seq, mc_delta_low[[k]]$S_avg, col = "blue", lwd = 2)
-    lines(time_seq, mc_mid[[k]]$S_avg, col = "black", lwd = 2) 
     lines(time_seq, mc_delta_high[[k]]$S_avg, col = "red", lwd = 2)
+    lines(time_seq, mc_mid[[k]]$S_avg, col = "black", lwd = 2) 
+    lines(time_seq, mc_delta_low[[k]]$S_avg, col = "blue", lwd = 2)
     
     # Headers
     if (v == 1) {
@@ -1194,7 +1205,7 @@ for (v in 1:n_rows) {
     }
   }
 }
-mtext("Sensitivity to Depreciation (Delta): Avg. Investment", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
+mtext("Sensitivity to Depreciation (Delta): Avg. of Investment (X) Paths over Time at nu = 1", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
 
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
 plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
@@ -1204,20 +1215,19 @@ legend("bottom", legend = c(paste0("High Delta (", delta_vals[3], ")"),
        col = c("red", "black", "blue"), lwd = 2, bty = "n", horiz = TRUE, cex = 1.2)
 dev.off()
 
-
 #### SIGMA SENSITIVITY PLOT ====
 png("sens_sigma_avg_investment_combined_nu_1.png", width = a4_width, height = a4_height, units = "in", res = resolution)
 par(mfrow = c(n_rows, n_cols), oma = c(4, 2, 4, 1), mar = c(4, 6, 3, 1))
 
-# Calculate limits by row (for each X0 across all theta_bar columns)
+# Calculate limits by row (for each X0 across all theta_bar columns) incorporating CIs
 row_ylim <- list()
 for (v in 1:n_rows) {
   vals <- c()
   for (k in 1:n_cols) {
     vals <- c(vals, 
-              mc_sens_results[[v]]$sigma_low[[k]]$S_avg, 
-              mc_results[[v]]$mid[[k]]$S_avg, 
-              mc_sens_results[[v]]$sigma_high[[k]]$S_avg)
+              mc_sens_results[[v]]$sigma_low[[k]]$S_lower, mc_sens_results[[v]]$sigma_low[[k]]$S_upper,
+              mc_results[[v]]$mid[[k]]$S_lower, mc_results[[v]]$mid[[k]]$S_upper,
+              mc_sens_results[[v]]$sigma_high[[k]]$S_lower, mc_sens_results[[v]]$sigma_high[[k]]$S_upper)
   }
   row_ylim[[v]] <- range(vals, na.rm = TRUE)
 }
@@ -1236,10 +1246,15 @@ for (v in 1:n_rows) {
     # Add grid
     grid(col = "lightgray", lty = "dotted", lwd = 1)
     
+    # Draw Confidence Intervals (Shading)
+    polygon(c(time_seq, rev(time_seq)), c(mc_sigma_high[[k]]$S_lower, rev(mc_sigma_high[[k]]$S_upper)), col = adjustcolor("red", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq, rev(time_seq)), c(mc_mid[[k]]$S_lower, rev(mc_mid[[k]]$S_upper)), col = adjustcolor("black", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq, rev(time_seq)), c(mc_sigma_low[[k]]$S_lower, rev(mc_sigma_low[[k]]$S_upper)), col = adjustcolor("blue", alpha.f = 0.2), border = NA)
+    
     # Draw lines
-    lines(time_seq, mc_sigma_low[[k]]$S_avg, col = "cyan", lwd = 2)
+    lines(time_seq, mc_sigma_high[[k]]$S_avg, col = "red", lwd = 2)
     lines(time_seq, mc_mid[[k]]$S_avg, col = "black", lwd = 2) 
-    lines(time_seq, mc_sigma_high[[k]]$S_avg, col = "purple", lwd = 2)
+    lines(time_seq, mc_sigma_low[[k]]$S_avg, col = "blue", lwd = 2)
     
     # Headers
     if (v == 1) {
@@ -1250,14 +1265,77 @@ for (v in 1:n_rows) {
     }
   }
 }
-mtext("Sensitivity to Volatility (Sigma): Avg. Investment", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
+mtext("Sensitivity to Volatility (Sigma):  Avg. of Investment (X) Paths over Time at nu = 1", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
 
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
 plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
 legend("bottom", legend = c(paste0("High Sigma (", sigma_vals[3], ")"), 
                             paste0("Base Sigma (", sigma_vals[2], ")"),
                             paste0("Low Sigma (", sigma_vals[1], ")")), 
-       col = c("purple", "black", "cyan"), lwd = 2, bty = "n", horiz = TRUE, cex = 1.2)
+       col = c("red", "black", "blue"), lwd = 2, bty = "n", horiz = TRUE, cex = 1.2)
+dev.off()
+
+par(mfrow = c(1, 1))
+
+
+#### kappa SENSITIVITY PLOT ====
+png("sens_kappa_avg_investment_combined_nu_1.png", width = a4_width, height = a4_height, units = "in", res = resolution)
+par(mfrow = c(n_rows, n_cols), oma = c(4, 2, 4, 1), mar = c(4, 6, 3, 1))
+
+# Calculate limits by row (for each X0 across all theta_bar columns) incorporating CIs
+row_ylim <- list()
+for (v in 1:n_rows) {
+  vals <- c()
+  for (k in 1:n_cols) {
+    vals <- c(vals, 
+              mc_sens_results[[v]]$kappa_low[[k]]$S_lower, mc_sens_results[[v]]$kappa_low[[k]]$S_upper,
+              mc_results[[v]]$mid[[k]]$S_lower, mc_results[[v]]$mid[[k]]$S_upper,
+              mc_sens_results[[v]]$kappa_high[[k]]$S_lower, mc_sens_results[[v]]$kappa_high[[k]]$S_upper)
+  }
+  row_ylim[[v]] <- range(vals, na.rm = TRUE)
+}
+
+for (v in 1:n_rows) {
+  for (k in 1:n_cols) {
+    mc_kappa_low  <- mc_sens_results[[v]]$kappa_low
+    mc_kappa_high <- mc_sens_results[[v]]$kappa_high
+    mc_mid        <- mc_results[[v]]$mid
+    
+    # Initialize empty plot
+    plot(time_seq, mc_kappa_high[[k]]$S_avg, type = "n", 
+         xlab = "Time (Years)", ylab = "Investment Value (X)",
+         ylim = row_ylim[[v]])
+    
+    # Add grid
+    grid(col = "lightgray", lty = "dotted", lwd = 1)
+    
+    # Draw Confidence Intervals (Shading)
+    polygon(c(time_seq, rev(time_seq)), c(mc_kappa_high[[k]]$S_lower, rev(mc_kappa_high[[k]]$S_upper)), col = adjustcolor("red", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq, rev(time_seq)), c(mc_mid[[k]]$S_lower, rev(mc_mid[[k]]$S_upper)), col = adjustcolor("black", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq, rev(time_seq)), c(mc_kappa_low[[k]]$S_lower, rev(mc_kappa_low[[k]]$S_upper)), col = adjustcolor("blue", alpha.f = 0.2), border = NA)
+    
+    # Draw lines
+    lines(time_seq, mc_kappa_high[[k]]$S_avg, col = "red", lwd = 2)
+    lines(time_seq, mc_mid[[k]]$S_avg, col = "black", lwd = 2) 
+    lines(time_seq, mc_kappa_low[[k]]$S_avg, col = "blue", lwd = 2)
+    
+    # Headers
+    if (v == 1) {
+      mtext(paste0("theta_bar = ", th_vals[k]), side = 3, line = 1, cex = 1.1, font = 2)
+    }
+    if (k == 1) {
+      mtext(paste0("X0 = ", X0_titles[v]), side = 2, line = 4.5, cex = 1.1, font = 2, las = 0)
+    }
+  }
+}
+mtext("Sensitivity to Transaction Costs (kappa):  Avg. of Investment (X) Paths over Time at nu = 1", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
+
+par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
+plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
+legend("bottom", legend = c(paste0("High kappa (", kappa_vals[3], ")"), 
+                            paste0("Base kappa (", kappa_vals[2], ")"),
+                            paste0("Low kappa (", kappa_vals[1], ")")), 
+       col = c("red", "black", "blue"), lwd = 2, bty = "n", horiz = TRUE, cex = 1.2)
 dev.off()
 
 par(mfrow = c(1, 1))
@@ -1277,112 +1355,6 @@ res_high_unc <- lapply(th_vals, function(th) simulate_fixed_p(th, uncertainty_nu
 res_mid_unc  <- lapply(th_vals, function(th) simulate_fixed_p(th, uncertainty_nu[2], params))
 res_low_unc  <- lapply(th_vals, function(th) simulate_fixed_p(th, uncertainty_nu[3], params))
 
-
-#res_higher_tdisc <- lapply(th_vals, function(th) simulate_fixed_p(th, uncertainty_nu[1], params))
-#params$r <- 0.01
-#res_lower_r  <- lapply(th_vals, function(th) simulate_fixed_p(th, uncertainty_nu[2], params))
-#params$r <- prev_r
-
-### Saddle point processes ====
-
-# 1. Panel Plot for Optimal Price Floor (theta)
-png("optimal_subsidy_theta_new_terminal_discount.png",  width = a4_width, height = a4_height, units = "in", res = resolution)
-    #width = 800, height = 600)
-par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
-for (k in 1:4) {
-  idx_low <- round(Nx / 2,0)
-  idx_high <- idx_low + round(100/dx,0) + 1
-  x_sub <- X[idx_low:idx_high]
-  t_low <- res_low_unc[[k]]$theta[idx_low:idx_high]
-  t_mid <- res_mid_unc[[k]]$theta[idx_low:idx_high]
-  t_high <- res_high_unc[[k]]$theta[idx_low:idx_high]
-  
-  plot(x_sub, t_low, type = "l", lwd = 2, col = "darkgreen",
-       main = paste("theta_bar =", th_vals[k]),
-       xlab = "Investment (x)", ylab = "Price Floor (theta)",
-       ylim = range(c(t_low, t_mid, t_high, params$py, th_vals[k])))
-  
-  lines(x_sub, t_mid, col = "black", lwd = 2)
-  lines(x_sub, t_high, col = "orange", lwd = 2)
-  
-  abline(h = params$py, lty = 2, col = "darkgrey")
-  abline(h = th_vals[k], lty = 2, col = "darkgrey")
-  
-  if (k == 1) {
-    legend("bottomright", legend = paste("nu =", uncertainty_nu), 
-           col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
-  }
-}
-mtext("Optimal Price Floor (theta) across scenarios", outer = TRUE, cex = 1.2, font = 2)
-dev.off()
-
-# 2. Panel Plot for Optimal Quantity (q)
-png("optimal_production_q_new_terminal_discount.png",  width = a4_width, height = a4_height, units = "in", res = resolution)
-    #width = 800, height = 600)
-par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
-for (k in 1:4) {
-  idx_low <- round(Nx / 2,0)
-  idx_high <- idx_low + round(100/dx,0) + 1
-  x_sub <- X[idx_low:idx_high]
-  q_low <- res_low_unc[[k]]$q[idx_low:idx_high]
-  q_mid <- res_mid_unc[[k]]$q[idx_low:idx_high]
-  q_high <- res_high_unc[[k]]$q[idx_low:idx_high]
-  
-  plot(x_sub, q_low, type = "l", lwd = 2, col = "darkgreen",
-       main = paste("theta_bar =", th_vals[k]),
-       xlab = "Investment (x)", ylab="Quantity (q)",
-       ylim = range(c(q_low, q_mid, q_high, params$q_max)))
-  
-  lines(x_sub, q_mid, col = "black", lwd = 2)
-  lines(x_sub, q_high, col = "orange", lwd = 2)
-  
-  abline(h = params$q_max, lty = 2, col = "darkgrey")
-  abline(h = 1.96, lty = 2, col = "darkgrey")
-  
-  if (k == 1) {
-    legend("bottomright", legend = paste("nu =", uncertainty_nu), 
-           col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
-  }
-}
-mtext("Optimal Quantity (q) across scenarios", outer = TRUE, cex = 1.2, font = 2)
-dev.off()
-
-
-### Phase Plots (theta vs q and q vs theta) ====
-
-# 1. Optimal Price Floor (theta) given Quantity (q)
-png("optimal_subsidy_given_q_new_terminal_discount.png",  width = a4_width, height = a4_height, units = "in", res = resolution)
-    #width = 800, height = 600)
-par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
-for (k in 1:4) {
-  q_low  <- res_low_unc[[k]]$q
-  t_low  <- res_low_unc[[k]]$theta
-  
-  q_mid  <- res_mid_unc[[k]]$q
-  t_mid  <- res_mid_unc[[k]]$theta
-  
-  q_high <- res_high_unc[[k]]$q
-  t_high <- res_high_unc[[k]]$theta
-  
-  plot(q_low, t_low, type = "l", lwd = 2, col = "darkgreen",
-       main = paste("theta_bar =", th_vals[k]),
-       xlab = "Optimal Quantity (q)", ylab = "Optimal Price Floor (theta)",
-       xlim = range(c(q_low, q_mid, q_high)),
-       ylim = range(c(t_low, t_mid, t_high, params$py, th_vals[k])))
-  
-  lines(q_mid, t_mid, col = "black", lwd = 2)
-  lines(q_high, t_high, col = "orange", lwd = 2)
-  
-  abline(h = params$py, lty = 2, col = "darkgrey")
-  abline(h = th_vals[k], lty = 2, col = "darkgrey")
-  
-  if (k == 1) {
-    legend("topright", legend = paste("nu =", uncertainty_nu), 
-           col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
-  }
-}
-mtext("Optimal Price Floor (theta) given Quantity (q)", outer = TRUE, cex = 1.2, font = 2)
-dev.off()
 
 ### MC of INVESTMENT PROCESS (Memory Optimized & Sequential) ====
 
@@ -1407,11 +1379,6 @@ time_seq_Nt <- (1:Nt) * dt
 n_rows <- length(X0_vals)
 n_cols <- length(th_vals)
 
-# Define A4 dimensions in inches (Landscape orientation)
-a4_width  <- 11.69
-a4_height <- 8.27
-resolution <- 300 
-
 ### Panel Plot for Avg. Investment Paths ====
 png("avg_investment_paths_combined_new_terminal_discount.png", width = a4_width, height = a4_height, units = "in", res = resolution)
 
@@ -1422,11 +1389,11 @@ for (k in 1:n_cols) {
   row_vals <- c()
   for(v in 1:n_rows) {
     row_vals <- c(row_vals, 
-                  mc_results[[v]]$low[[k]]$S_avg, 
-                  mc_results[[v]]$mid[[k]]$S_avg, 
-                  mc_results[[v]]$high[[k]]$S_avg)
+                  mc_results[[v]]$low[[k]]$S_lower, mc_results[[v]]$low[[k]]$S_upper,
+                  mc_results[[v]]$mid[[k]]$S_lower, mc_results[[v]]$mid[[k]]$S_upper,
+                  mc_results[[v]]$high[[k]]$S_lower, mc_results[[v]]$high[[k]]$S_upper)
   }
-  col_ylim[[k]] <- range(row_vals, na.rm = TRUE) # Use double brackets
+  col_ylim[[k]] <- range(row_vals, na.rm = TRUE)
 }
 
 for (v in 1:n_rows) {
@@ -1443,16 +1410,21 @@ for (v in 1:n_rows) {
     # Add grid
     grid(col = "lightgray", lty = "dotted", lwd = 1)
     
+    # Draw Confidence Intervals (Shading)
+    polygon(c(time_seq, rev(time_seq)), c(mc_high[[k]]$S_lower, rev(mc_high[[k]]$S_upper)), col = adjustcolor("orange", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq, rev(time_seq)), c(mc_mid[[k]]$S_lower, rev(mc_mid[[k]]$S_upper)), col = adjustcolor("black", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq, rev(time_seq)), c(mc_low[[k]]$S_lower, rev(mc_low[[k]]$S_upper)), col = adjustcolor("darkgreen", alpha.f = 0.2), border = NA)
+    
     # Draw data lines on top of grid
-    lines(time_seq, mc_low[[k]]$S_avg, col = "darkgreen", lwd = 2)
-    lines(time_seq, mc_mid[[k]]$S_avg, col = "black", lwd = 2)
     lines(time_seq, mc_high[[k]]$S_avg, col = "orange", lwd = 2)
+    lines(time_seq, mc_mid[[k]]$S_avg, col = "black", lwd = 2)
+    lines(time_seq, mc_low[[k]]$S_avg, col = "darkgreen", lwd = 2)
     
     # Headers
-    if (v == 1) { # Top row gets the column headers (theta_bar)
+    if (v == 1) { 
       mtext(paste0("theta_bar = ", th_vals[k]), side = 3, line = 1, cex = 1.1, font = 2)
     }
-    if (k == 1) { # First column gets the row headers (X0)
+    if (k == 1) { 
       mtext(paste0("X0 = ", X0_titles[v]), side = 2, line = 4.5, cex = 1.1, font = 2, las = 0)
     }
   }
@@ -1478,11 +1450,11 @@ for (k in 1:n_cols) {
   row_vals <- c()
   for(v in 1:n_rows) {
     row_vals <- c(row_vals, 
-                  mc_results[[v]]$low[[k]]$theta_avg, 
-                  mc_results[[v]]$mid[[k]]$theta_avg, 
-                  mc_results[[v]]$high[[k]]$theta_avg)
+                  mc_results[[v]]$low[[k]]$theta_lower, mc_results[[v]]$low[[k]]$theta_upper,
+                  mc_results[[v]]$mid[[k]]$theta_lower, mc_results[[v]]$mid[[k]]$theta_upper,
+                  mc_results[[v]]$high[[k]]$theta_lower, mc_results[[v]]$high[[k]]$theta_upper)
   }
-  col_ylim[[k]] <- range(row_vals, na.rm = TRUE) # Use double brackets
+  col_ylim[[k]] <- range(row_vals, na.rm = TRUE) 
 }
 
 for (v in 1:n_rows) {
@@ -1501,10 +1473,15 @@ for (v in 1:n_rows) {
     abline(h = th_vals[k], lty = 2, col = "darkgrey")
     abline(h = params$py, lty = 2, col = "darkgrey")
     
+    # Draw Confidence Intervals (Shading)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_high[[k]]$theta_lower, rev(mc_high[[k]]$theta_upper)), col = adjustcolor("orange", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_mid[[k]]$theta_lower, rev(mc_mid[[k]]$theta_upper)), col = adjustcolor("black", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_low[[k]]$theta_lower, rev(mc_low[[k]]$theta_upper)), col = adjustcolor("darkgreen", alpha.f = 0.2), border = NA)
+    
     # Draw data lines on top
-    lines(time_seq_Nt, mc_low[[k]]$theta_avg, col = "darkgreen", lwd = 2)
-    lines(time_seq_Nt, mc_mid[[k]]$theta_avg, col = "black", lwd = 2)
     lines(time_seq_Nt, mc_high[[k]]$theta_avg, col = "orange", lwd = 2)
+    lines(time_seq_Nt, mc_mid[[k]]$theta_avg, col = "black", lwd = 2)
+    lines(time_seq_Nt, mc_low[[k]]$theta_avg, col = "darkgreen", lwd = 2)
     
     if (v == 1) {
       mtext(paste0("theta_bar = ", th_vals[k]), side = 3, line = 1, cex = 1.1, font = 2)
@@ -1535,11 +1512,11 @@ for (k in 1:n_cols) {
   row_vals <- c()
   for(v in 1:n_rows) {
     row_vals <- c(row_vals, 
-                  mc_results[[v]]$low[[k]]$q_avg, 
-                  mc_results[[v]]$mid[[k]]$q_avg, 
-                  mc_results[[v]]$high[[k]]$q_avg)
+                  mc_results[[v]]$low[[k]]$q_lower, mc_results[[v]]$low[[k]]$q_upper,
+                  mc_results[[v]]$mid[[k]]$q_lower, mc_results[[v]]$mid[[k]]$q_upper,
+                  mc_results[[v]]$high[[k]]$q_lower, mc_results[[v]]$high[[k]]$q_upper)
   }
-  col_ylim[[k]] <- range(row_vals, na.rm = TRUE) # Use double brackets
+  col_ylim[[k]] <- range(row_vals, na.rm = TRUE)
 }
 
 for (v in 1:n_rows) {
@@ -1558,10 +1535,15 @@ for (v in 1:n_rows) {
     abline(h = params$q_max, lty = 2, col = "darkgrey")
     abline(h = 1.96, lty = 2, col = "darkgrey")
     
+    # Draw Confidence Intervals (Shading)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_high[[k]]$q_lower, rev(mc_high[[k]]$q_upper)), col = adjustcolor("orange", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_mid[[k]]$q_lower, rev(mc_mid[[k]]$q_upper)), col = adjustcolor("black", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_low[[k]]$q_lower, rev(mc_low[[k]]$q_upper)), col = adjustcolor("darkgreen", alpha.f = 0.2), border = NA)
+    
     # Draw data lines on top
-    lines(time_seq_Nt, mc_low[[k]]$q_avg, col = "darkgreen", lwd = 2)
-    lines(time_seq_Nt, mc_mid[[k]]$q_avg, col = "black", lwd = 2)
     lines(time_seq_Nt, mc_high[[k]]$q_avg, col = "orange", lwd = 2)
+    lines(time_seq_Nt, mc_mid[[k]]$q_avg, col = "black", lwd = 2)
+    lines(time_seq_Nt, mc_low[[k]]$q_avg, col = "darkgreen", lwd = 2)
     
     if (v == 1) {
       mtext(paste0("theta_bar = ", th_vals[k]), side = 3, line = 1, cex = 1.1, font = 2)
@@ -1592,11 +1574,11 @@ for (k in 1:n_cols) {
   row_vals <- c()
   for(v in 1:n_rows) {
     row_vals <- c(row_vals, 
-                  mc_results[[v]]$low[[k]]$gamma_avg, 
-                  mc_results[[v]]$mid[[k]]$gamma_avg, 
-                  mc_results[[v]]$high[[k]]$gamma_avg)
+                  mc_results[[v]]$low[[k]]$gamma_lower, mc_results[[v]]$low[[k]]$gamma_upper,
+                  mc_results[[v]]$mid[[k]]$gamma_lower, mc_results[[v]]$mid[[k]]$gamma_upper,
+                  mc_results[[v]]$high[[k]]$gamma_lower, mc_results[[v]]$high[[k]]$gamma_upper)
   }
-  col_ylim[[k]] <- range(row_vals, na.rm = TRUE) # Use double brackets
+  col_ylim[[k]] <- range(row_vals, na.rm = TRUE)
 }
 
 for (v in 1:n_rows) {
@@ -1614,10 +1596,15 @@ for (v in 1:n_rows) {
     grid(col = "lightgray", lty = "dotted", lwd = 1)
     abline(h = 0, lty = 2, col = "darkgrey")
     
+    # Draw Confidence Intervals (Shading)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_high[[k]]$gamma_lower, rev(mc_high[[k]]$gamma_upper)), col = adjustcolor("orange", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_mid[[k]]$gamma_lower, rev(mc_mid[[k]]$gamma_upper)), col = adjustcolor("black", alpha.f = 0.2), border = NA)
+    polygon(c(time_seq_Nt, rev(time_seq_Nt)), c(mc_low[[k]]$gamma_lower, rev(mc_low[[k]]$gamma_upper)), col = adjustcolor("darkgreen", alpha.f = 0.2), border = NA)
+    
     # Draw data lines on top
-    lines(time_seq_Nt, mc_low[[k]]$gamma_avg, col = "darkgreen", lwd = 2)
-    lines(time_seq_Nt, mc_mid[[k]]$gamma_avg, col = "black", lwd = 2)
     lines(time_seq_Nt, mc_high[[k]]$gamma_avg, col = "orange", lwd = 2)
+    lines(time_seq_Nt, mc_mid[[k]]$gamma_avg, col = "black", lwd = 2)
+    lines(time_seq_Nt, mc_low[[k]]$gamma_avg, col = "darkgreen", lwd = 2)
     
     if (v == 1) {
       mtext(paste0("theta_bar = ", th_vals[k]), side = 3, line = 1, cex = 1.1, font = 2)
