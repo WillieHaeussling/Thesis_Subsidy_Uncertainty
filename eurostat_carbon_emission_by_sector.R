@@ -46,7 +46,7 @@ df_pct <- df_grouped %>%
   ungroup()
 
 # 7. Plot the trends
-png("eu_carbon_emissions_by_sector.png", width = a4_width, height = a4_height, units = "in", res = resolution)
+png("eu_carbon_emissions_by_sector.png", width = a4_width, height = a4_height*2/3, units = "in", res = resolution)
 
 # Set up a layout: 2 columns in the top row (plots), 1 merged column in the bottom row (legend)
 # heights = c(5, 1.5) means the plot row gets about 77% of the height, legend gets 23%
