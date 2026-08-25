@@ -312,7 +312,7 @@ for (k in 1:4) {
 mtext("Optimal Price Floor (theta) across scenarios", outer = TRUE, cex = 1.2, font = 2)
 dev.off()
 
-### Plot for Optimal Production (q) ====
+### Plot for Optimal Quantity (q) ====
 png("optimal_production_q.png",  width = a4_width, height = a4_height, units = "in", res = resolution)
 ##width = 800, height = 600)
 par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
@@ -326,7 +326,7 @@ for (k in 1:4) {
   
   plot(x_sub, q_low, type = "l", lwd = 2, col = "darkgreen",
        main = paste("theta_bar =", th_vals[k]),
-       xlab = "Investment (x)", ylab = "Production (q)",
+       xlab = "Investment (x)", ylab="Quantity (q)",
        ylim = range(c(q_low, q_mid, q_high, params$q_max)))
   
   lines(x_sub, q_mid, col = "black", lwd = 2)
@@ -340,14 +340,14 @@ for (k in 1:4) {
            col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
   }
 }
-mtext("Optimal Production (q) across scenarios", outer = TRUE, cex = 1.2, font = 2)
+mtext("Optimal Quantity (q) across scenarios", outer = TRUE, cex = 1.2, font = 2)
 dev.off()
 
 ## ==============================================================================
 # PHASE 4.0.1: Phase Plots (theta vs q and q vs theta) ==========================
 ## ==============================================================================
 
-### Optimal Price Floor (theta) given Production (q) ====
+### Optimal Price Floor (theta) given Quantity (q) ====
 png("optimal_subsidy_given_q.png",  width = a4_width, height = a4_height, units = "in", res = resolution)
     #width = 800, height = 600)
 par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
@@ -363,7 +363,7 @@ for (k in 1:4) {
   
   plot(q_low, t_low, type = "l", lwd = 2, col = "darkgreen",
        main = paste("theta_bar =", th_vals[k]),
-       xlab = "Production (q)", ylab = "Optimal Price Floor (theta)",
+       xlab = "Quantity (q)", ylab = "Optimal Price Floor (theta)",
        xlim = range(c(q_low, q_mid, q_high)),
        ylim = range(c(t_low, t_mid, t_high, params$py, th_vals[k])))
   
@@ -378,10 +378,10 @@ for (k in 1:4) {
            col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
   }
 }
-mtext("Optimal Price Floor (theta) given Production (q)", outer = TRUE, cex = 1.2, font = 2)
+mtext("Optimal Price Floor (theta) given Quantity (q)", outer = TRUE, cex = 1.2, font = 2)
 dev.off()
 
-### Optimal Production (q) given Price Floor (theta) ====
+### Optimal Quantity (q) given Price Floor (theta) ====
 png("optimal_production_given_theta.png",  width = a4_width, height = a4_height, units = "in", res = resolution)
     #width = 800, height = 600)
 par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
@@ -397,7 +397,7 @@ for (k in 1:4) {
   
   plot(t_low, q_low, type = "l", lwd = 2, col = "darkgreen",
        main = paste("theta_bar =", th_vals[k]),
-       xlab = "Price Floor (theta)", ylab = "Optimal Production (q)",
+       xlab = "Price Floor (theta)", ylab = "Optimal Quantity (q)",
        xlim = range(c(t_low, t_mid, t_high, params$py, th_vals[k])),
        ylim = range(c(q_low, q_mid, q_high)))
   
@@ -412,7 +412,7 @@ for (k in 1:4) {
            col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
   }
 }
-mtext("Optimal Production (q) given Price Floor (theta)", outer = TRUE, cex = 1.2, font = 2)
+mtext("Optimal Quantity (q) given Price Floor (theta)", outer = TRUE, cex = 1.2, font = 2)
 dev.off()
 
 ## ==============================================================================
@@ -490,7 +490,7 @@ for (v in 1:length(X0_vals)) {
   for (k in 1:4) {
     plot(time_seq, mc_low[[k]]$S_avg, type = "l", col = "darkgreen", lwd = 2,
          main = paste("theta_bar =", th_vals[k]),
-         xlab = "Time (Years)", ylab = "Investment",
+         xlab = "Time (Years)", ylab = "Investment Value (X)",
          ylim = range(c(mc_low[[k]]$S_avg, mc_mid[[k]]$S_avg, mc_high[[k]]$S_avg)))
     
     lines(time_seq, mc_mid[[k]]$S_avg, col = "black", lwd = 2)
@@ -501,7 +501,7 @@ for (v in 1:length(X0_vals)) {
                                             paste0("Low Unc (", uncertainty_nu[3], ")")), 
                       col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
   }
-  mtext(paste0("Avg. Investment (X) over Time (X0 = ", X0_titles[v], ")"), outer = TRUE, cex = 1.2, font = 2)
+  mtext(paste0("Avg. of Investment Value (X) Paths over Time (X0 = ", X0_titles[v], ")"), outer = TRUE, cex = 1.2, font = 2)
   dev.off()
   
   ### Plot for Avg. Price Floor (theta) ====
@@ -525,7 +525,7 @@ for (v in 1:length(X0_vals)) {
                                                paste0("Low Unc (", uncertainty_nu[3], ")")), 
                       col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
   }
-  mtext(paste0("Avg. Price Floor (theta) Paths (X0 = ", X0_titles[v], ")"), outer = TRUE, cex = 1.2, font = 2)
+  mtext(paste0("Avg. of Price Floor (theta) Paths over Time (X0 = ", X0_titles[v], ")"), outer = TRUE, cex = 1.2, font = 2)
   dev.off()
   
   ### Plot for Avg. Quantities (q) ====
@@ -535,7 +535,7 @@ for (v in 1:length(X0_vals)) {
   for (k in 1:4) {
     plot(time_seq_Nt, mc_low[[k]]$q_avg, type = "l", col = "darkgreen", lwd = 2,
          main = paste("theta_bar =", th_vals[k]),
-         xlab = "Time (Years)", ylab = "Quantities (q)",
+         xlab = "Time (Years)", ylab = "Quantity (q)",
          ylim = range(c(mc_low[[k]]$q_avg, mc_mid[[k]]$q_avg, mc_high[[k]]$q_avg, params$py, th_vals[k])))
     
     lines(time_seq_Nt, mc_mid[[k]]$q_avg, col = "black", lwd = 2)
@@ -549,17 +549,17 @@ for (v in 1:length(X0_vals)) {
                                             paste0("Low Unc (", uncertainty_nu[3], ")")), 
                       col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
   }
-  mtext(paste0("Avg. Quantities (q) Paths (X0 = ", X0_titles[v], ")"), outer = TRUE, cex = 1.2, font = 2)
+  mtext(paste0("Avg. of Quantity (q) Paths over Time (X0 = ", X0_titles[v], ")"), outer = TRUE, cex = 1.2, font = 2)
   dev.off()
   
-  ### Plot for Avg. Investment Rates (gamma) ====
+  ### Plot for Avg. Investment Rate (gamma) ====
   png(paste0("avg_investment_rates_paths_", X0_tags[v], ".png"),  width = a4_width, height = a4_height, units = "in", res = resolution)
       #width = 800, height = 600)
   par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
   for (k in 1:4) {
     plot(time_seq_Nt, mc_low[[k]]$gamma_avg, type = "l", col = "darkgreen", lwd = 2,
          main = paste("theta_bar =", th_vals[k]),
-         xlab = "Time (Years)", ylab = "Investment Rates (gamma)",
+         xlab = "Time (Years)", ylab = "Investment Rate (gamma)",
          ylim = range(c(mc_low[[k]]$gamma_avg, mc_mid[[k]]$gamma_avg, 
                         mc_high[[k]]$gamma_avg, params$py, th_vals[k])))
     
@@ -573,7 +573,7 @@ for (v in 1:length(X0_vals)) {
                                                paste0("Low Unc (", uncertainty_nu[3], ")")), 
                       col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
   }
-  mtext(paste0("Avg. Investment Rates (gamma) Paths (X0 = ", X0_titles[v], ")"), outer = TRUE, cex = 1.2, font = 2)
+  mtext(paste0("Avg. of Investment Rate (gamma) Paths over Time (X0 = ", X0_titles[v], ")"), outer = TRUE, cex = 1.2, font = 2)
   dev.off()
 }
 
@@ -615,7 +615,7 @@ for (v in 1:n_rows) {
     
     # Initialize empty plot for background
     plot(time_seq, mc_low[[k]]$S_avg, type = "n", 
-         xlab = "Time (Years)", ylab = "Investment",
+         xlab = "Time (Years)", ylab = "Investment Value (X)",
          ylim = col_ylim[[k]])
     
     # Add grid
@@ -635,7 +635,7 @@ for (v in 1:n_rows) {
     }
   }
 }
-mtext("Avg. Investment (X) over Time", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
+mtext("Avg. of Investment Value (X) Paths over Time", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
 
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
 plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
@@ -691,7 +691,7 @@ for (v in 1:n_rows) {
     }
   }
 }
-mtext("Avg. Price Floor (theta) Paths", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
+mtext("Avg. of Price Floor (theta) Paths over Time", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
 
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
 plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
@@ -726,7 +726,7 @@ for (v in 1:n_rows) {
     
     # Initialize empty plot
     plot(time_seq_Nt, mc_low[[k]]$q_avg, type = "n", 
-         xlab = "Time (Years)", ylab = "Quantities (q)",
+         xlab = "Time (Years)", ylab = "Quantity (q)",
          ylim = col_ylim[[k]])
     
     # Add grid and background reference lines
@@ -747,7 +747,7 @@ for (v in 1:n_rows) {
     }
   }
 }
-mtext("Avg. Quantities (q) Paths", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
+mtext("Avg. of Quantity (q) Paths over Time", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
 
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
 plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
@@ -758,7 +758,7 @@ legend("bottom", legend = c(paste0("High Unc (", uncertainty_nu[1], ")"),
 dev.off()
 
 
-### Panel Plot for Avg. Investment Rates (gamma) ====
+### Panel Plot for Avg. Investment Rate (gamma) ====
 png("avg_investment_rates_paths_combined.png", width = a4_width, height = a4_height, units = "in", res = resolution)
 par(mfrow = c(n_rows, n_cols), oma = c(4, 2, 4, 1), mar = c(4, 6, 3, 1))
 
@@ -782,7 +782,7 @@ for (v in 1:n_rows) {
     
     # Initialize empty plot
     plot(time_seq_Nt, mc_low[[k]]$gamma_avg, type = "n", 
-         xlab = "Time (Years)", ylab = "Investment Rates (gamma)",
+         xlab = "Time (Years)", ylab = "Investment Rate (gamma)",
          ylim = col_ylim[[k]])
     
     # Add grid and background reference lines
@@ -802,7 +802,7 @@ for (v in 1:n_rows) {
     }
   }
 }
-mtext("Avg. Investment Rates (gamma) Paths", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
+mtext("Avg. of Investment Rate (gamma) Paths over Time", outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
 
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
 plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
@@ -855,7 +855,7 @@ for (r in 1:n_rows_nu) {
     
     # 2. Draw Plot
     plot(time_seq_Nt, q_val, type = "n", 
-         xlab = "Time (Years)", ylab = "Quantities (q)",
+         xlab = "Time (Years)", ylab = "Quantity (q)",
          ylim = col_ylim[[k]])
     
     grid(col = "lightgray", lty = "dotted", lwd = 1)
@@ -891,7 +891,7 @@ for (r in 1:n_rows_nu) {
 }
 
 # Main Outer Title
-mtext(paste0("Avg. Quantities (q) Paths (Initial State X0 = ", X0_titles[X0_state], ")"), 
+mtext(paste0("Avg. of Quantity (q) Paths over Time with Initial State X0 = ", X0_titles[X0_state]), 
       outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
 
 # Outer Legend
@@ -1097,7 +1097,7 @@ for (v in 1:length(X0_vals)) {
   for (k in 1:4) {
     plot(time_seq, mc_delta_high[[k]]$S_avg, type = "l", col = "red", lwd = 2,
          main = paste("theta_bar =", th_vals[k]),
-         xlab = "Time (Years)", ylab = "Investment",
+         xlab = "Time (Years)", ylab = "Investment Value (X)",
          ylim = range(c(mc_delta_low[[k]]$S_avg, mc_mid[[k]]$S_avg, mc_delta_high[[k]]$S_avg)))
     
     lines(time_seq, mc_mid[[k]]$S_avg, col = "black", lwd = 2) 
@@ -1118,7 +1118,7 @@ for (v in 1:length(X0_vals)) {
   for (k in 1:4) {
     plot(time_seq, mc_sigma_high[[k]]$S_avg, type = "l", col = "purple", lwd = 2,
          main = paste("theta_bar =", th_vals[k]),
-         xlab = "Time (Years)", ylab = "Investment",
+         xlab = "Time (Years)", ylab = "Investment Value (X)",
          ylim = range(c(mc_sigma_low[[k]]$S_avg, mc_mid[[k]]$S_avg, mc_sigma_high[[k]]$S_avg)))
     
     lines(time_seq, mc_mid[[k]]$S_avg, col = "black", lwd = 2) 
@@ -1174,7 +1174,7 @@ for (v in 1:n_rows) {
     
     # Initialize empty plot
     plot(time_seq, mc_delta_high[[k]]$S_avg, type = "n", 
-         xlab = "Time (Years)", ylab = "Investment",
+         xlab = "Time (Years)", ylab = "Investment Value (X)",
          ylim = row_ylim[[v]])
     
     # Add grid
@@ -1230,7 +1230,7 @@ for (v in 1:n_rows) {
     
     # Initialize empty plot
     plot(time_seq, mc_sigma_high[[k]]$S_avg, type = "n", 
-         xlab = "Time (Years)", ylab = "Investment",
+         xlab = "Time (Years)", ylab = "Investment Value (X)",
          ylim = row_ylim[[v]])
     
     # Add grid
@@ -1316,7 +1316,7 @@ for (k in 1:4) {
 mtext("Optimal Price Floor (theta) across scenarios", outer = TRUE, cex = 1.2, font = 2)
 dev.off()
 
-# 2. Panel Plot for Optimal Production (q)
+# 2. Panel Plot for Optimal Quantity (q)
 png("optimal_production_q_new_terminal_discount.png",  width = a4_width, height = a4_height, units = "in", res = resolution)
     #width = 800, height = 600)
 par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
@@ -1330,7 +1330,7 @@ for (k in 1:4) {
   
   plot(x_sub, q_low, type = "l", lwd = 2, col = "darkgreen",
        main = paste("theta_bar =", th_vals[k]),
-       xlab = "Investment (x)", ylab = "Production (q)",
+       xlab = "Investment (x)", ylab="Quantity (q)",
        ylim = range(c(q_low, q_mid, q_high, params$q_max)))
   
   lines(x_sub, q_mid, col = "black", lwd = 2)
@@ -1344,13 +1344,13 @@ for (k in 1:4) {
            col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
   }
 }
-mtext("Optimal Production (q) across scenarios", outer = TRUE, cex = 1.2, font = 2)
+mtext("Optimal Quantity (q) across scenarios", outer = TRUE, cex = 1.2, font = 2)
 dev.off()
 
 
 ### Phase Plots (theta vs q and q vs theta) ====
 
-# 1. Optimal Price Floor (theta) given Production (q)
+# 1. Optimal Price Floor (theta) given Quantity (q)
 png("optimal_subsidy_given_q_new_terminal_discount.png",  width = a4_width, height = a4_height, units = "in", res = resolution)
     #width = 800, height = 600)
 par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
@@ -1366,7 +1366,7 @@ for (k in 1:4) {
   
   plot(q_low, t_low, type = "l", lwd = 2, col = "darkgreen",
        main = paste("theta_bar =", th_vals[k]),
-       xlab = "Optimal Production (q)", ylab = "Optimal Price Floor (theta)",
+       xlab = "Optimal Quantity (q)", ylab = "Optimal Price Floor (theta)",
        xlim = range(c(q_low, q_mid, q_high)),
        ylim = range(c(t_low, t_mid, t_high, params$py, th_vals[k])))
   
@@ -1381,7 +1381,7 @@ for (k in 1:4) {
            col = c("orange", "black", "darkgreen"), lwd = 2, bty = "n")
   }
 }
-mtext("Optimal Price Floor (theta) given Production (q)", outer = TRUE, cex = 1.2, font = 2)
+mtext("Optimal Price Floor (theta) given Quantity (q)", outer = TRUE, cex = 1.2, font = 2)
 dev.off()
 
 ### MC of INVESTMENT PROCESS (Memory Optimized & Sequential) ====
@@ -1437,7 +1437,7 @@ for (v in 1:n_rows) {
     
     # Initialize empty plot for background
     plot(time_seq, mc_low[[k]]$S_avg, type = "n", 
-         xlab = "Time (Years)", ylab = "Investment",
+         xlab = "Time (Years)", ylab = "Investment Value (X)",
          ylim = col_ylim[[k]])
     
     # Add grid
@@ -1457,7 +1457,7 @@ for (v in 1:n_rows) {
     }
   }
 }
-mtext(paste0("Avg. Investment (X) over Time at ", 100*(1- params$terminal_discount), "% Terminal Depreciation"),
+mtext(paste0("Avg. of Investment Value (X) Paths over Time at ", 100*(1- params$terminal_discount), "% Terminal Depreciation"),
       outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
 
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
@@ -1514,7 +1514,7 @@ for (v in 1:n_rows) {
     }
   }
 }
-mtext(paste0("Avg. Price Floor (theta) Paths at ", 100*(1- params$terminal_discount), "% Terminal Depreciation"), 
+mtext(paste0("Avg. of Price Floor (theta) Paths over Time at ", 100*(1- params$terminal_discount), "% Terminal Depreciation"), 
       outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
 
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
@@ -1550,7 +1550,7 @@ for (v in 1:n_rows) {
     
     # Initialize empty plot
     plot(time_seq_Nt, mc_low[[k]]$q_avg, type = "n", 
-         xlab = "Time (Years)", ylab = "Quantities (q)",
+         xlab = "Time (Years)", ylab = "Quantity (q)",
          ylim = col_ylim[[k]])
     
     # Add grid and background reference lines
@@ -1571,7 +1571,7 @@ for (v in 1:n_rows) {
     }
   }
 }
-mtext(paste0("Avg. Quantities (q) Paths at ", 100*(1- params$terminal_discount), "% Terminal Depreciation"),
+mtext(paste0("Avg. of Quantity (q) Paths over Time at ", 100*(1- params$terminal_discount), "% Terminal Depreciation"),
       outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
 
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
@@ -1583,7 +1583,7 @@ legend("bottom", legend = c(paste0("High Unc (", uncertainty_nu[1], ")"),
 dev.off()
 
 
-### Panel Plot for Avg. Investment Rates (gamma) ====
+### Panel Plot for Avg. Investment Rate (gamma) ====
 png("avg_investment_rates_paths_combined_new_terminal_discount.png", width = a4_width, height = a4_height, units = "in", res = resolution)
 par(mfrow = c(n_rows, n_cols), oma = c(4, 2, 4, 1), mar = c(4, 6, 3, 1))
 
@@ -1607,7 +1607,7 @@ for (v in 1:n_rows) {
     
     # Initialize empty plot
     plot(time_seq_Nt, mc_low[[k]]$gamma_avg, type = "n", 
-         xlab = "Time (Years)", ylab = "Investment Rates (gamma)",
+         xlab = "Time (Years)", ylab = "Investment Rate (gamma)",
          ylim = col_ylim[[k]])
     
     # Add grid and background reference lines
@@ -1627,7 +1627,7 @@ for (v in 1:n_rows) {
     }
   }
 }
-mtext(paste0("Avg. Investment Rates (gamma) Paths at ", 100*(1- params$terminal_discount), "% Terminal Depreciation"),
+mtext(paste0("Avg. of Investment Rate (gamma) Paths over Time at ", 100*(1- params$terminal_discount), "% Terminal Depreciation"),
       outer = TRUE, side = 3, cex = 1.5, font = 2, line = 1)
 
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
