@@ -1,4 +1,3 @@
-# 1. Install required packages if missing
 library(eurostat)
 library(dplyr)
 
@@ -6,11 +5,11 @@ a4_width <- 11.69   # Landscape orientation
 a4_height <- 8.27
 resolution <- 300
 
-# 2. Download the Air Emissions dataset
+# Download the Air Emissions dataset
 cat("Downloading data from Eurostat... This might take a moment.\n")
 df <- get_eurostat("env_ac_ainah_r2", time_format = "num")
 
-# 3. Filter for CO2, the EU-27, and Tonnes
+# Filter for CO2, the EU-27, and Tonnes
 df_filtered <- df %>%
   filter(
     geo == "EU27_2020",      # European Union - 27 countries (from 2020)
@@ -18,14 +17,14 @@ df_filtered <- df %>%
     unit == "T"              # Measured in Tonnes
   )
 
-# 4. Filter for top-level NACE sectors to avoid double counting
+# Filter for top-level NACE sectors to avoid double counting
 df_sectors <- df_filtered %>%
   filter(nchar(nace_r2) == 1)
 
-# 5. Convert Eurostat codes to readable labels
+# Convert Eurostat codes to readable labels
 df_labelled <- label_eurostat(df_sectors)
 
-# 6. Group sectors into Top 5 and 'Other'
+# Group sectors into Top 5 and 'Other'
 latest_year <- max(df_labelled$TIME_PERIOD, na.rm = TRUE)
 top_sectors <- df_labelled %>%
   filter(TIME_PERIOD == latest_year) %>%
@@ -45,7 +44,7 @@ df_pct <- df_grouped %>%
   mutate(percentage = values / sum(values) * 100) %>%
   ungroup()
 
-# 7. Plot the trends
+# Plot the trends
 png("eu_carbon_emissions_by_sector.png", width = a4_width, height = a4_height*2/3, units = "in", res = resolution)
 
 # Set up a layout: 2 columns in the top row (plots), 1 merged column in the bottom row (legend)
@@ -59,9 +58,9 @@ par(oma = c(2, 1, 2, 1))
 plot_sectors <- c(top_sectors, "Other")
 cb_palette <- c("#E69F00", "#56B4E9", "#009E73", "#D55E00", "#CC79A7", "#999999")
 
-# ---------------------------------------------------------
+## ==============================================================================
 # PLOT 1: Absolute Emissions (Million Tonnes)
-# ---------------------------------------------------------
+## ==============================================================================
 par(mar = c(4, 4, 3, 2)) # Standard margins for the plots
 x_limits <- range(df_grouped$TIME_PERIOD, na.rm = TRUE)
 y_limits <- range(df_grouped$values / 1e6, na.rm = TRUE)
@@ -91,9 +90,9 @@ for (i in seq_along(plot_sectors)) {
   )
 }
 
-# ---------------------------------------------------------
+## ==============================================================================
 # PLOT 2: Percentage Breakdown (%)
-# ---------------------------------------------------------
+## ==============================================================================
 par(mar = c(4, 4, 3, 2))
 y_limits_pct <- c(0, max(df_pct$percentage, na.rm = TRUE)) 
 
@@ -122,9 +121,9 @@ for (i in seq_along(plot_sectors)) {
   )
 }
 
-# ---------------------------------------------------------
+## ==============================================================================
 # PANEL 3: Merged Legend at the Bottom
-# ---------------------------------------------------------
+## ==============================================================================
 par(mar = c(0, 0, 0, 0)) # Remove margins completely so legend is centered in the space
 plot.new()               # Create an empty plot to hold the legend
 
@@ -138,9 +137,9 @@ legend(
   cex = 0.9              # Slightly smaller text
 )
 
-# ---------------------------------------------------------
+## ==============================================================================
 # ADD SOURCE TEXT
-# ---------------------------------------------------------
+## ==============================================================================
 # outer = TRUE places it relative to the whole canvas (oma), below the legend panel
 mtext("Source: Eurostat (env_ac_ainah_r2)", side = 1, line = 0, outer = TRUE, adj = 0.98, cex = 0.8)
 
