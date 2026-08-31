@@ -1634,7 +1634,7 @@ params$terminal_discount <- prev_disc
 # PHASE 9: EXTENDED SENSITIVITY ANALYSIS (DELTA, KAPPA, SIGMA) ==================
 ## ==============================================================================
 
-# Store original base values explicitly so they never get corrupted by previous runs
+# Store original base values
 base_delta <- 0.02
 base_sigma <- 0.2
 base_kappa <- 0.5
@@ -1655,19 +1655,19 @@ X0_tags <- c("x_bar", "x_bar_minus_1", "x_bar_minus_2")
 
 
 
-# MAIN LOOP FOR THE 9 SCENARIOS
+# MAIN LOOP FOR THE 6 SCENARIOS
 
 for (iter in 1:nrow(param_grid)) {
   
-  # 1. Update params for this specific iteration
+  # Update params for this specific iteration
   params$delta <- param_grid$delta[iter]
   params$sigma <- param_grid$sigma[iter]
   params$kappa <- param_grid$kappa[iter]
   
-  # 2. Recalculate W inside the loop because sigma might have changed
+  # Recalculate W inside the loop because sigma might have changed
   W <- params$sigma * sqrt(dt) * Z_std
   
-  # 3. Create a unique suffix for saving the plots
+  # Create a unique suffix for saving the plots
   suffix <- sprintf("_case_%d_d_%.3f_s_%.3f_k_%.3f.png", iter, params$delta, params$sigma, params$kappa)
   title_suffix <- sprintf("(Case %d: d=%.3f, s=%.3f, k=%.3f)", iter, params$delta, params$sigma, params$kappa)
   
@@ -2307,4 +2307,4 @@ for (iter in 1:nrow(param_grid)) {
   ### Set back to original terminal discount before moving to the next case ====
   params$terminal_discount <- prev_disc
   
-} # END OF 9-CASE ITERATION LOOP
+} # END OF 6-CASE ITERATION LOOP
